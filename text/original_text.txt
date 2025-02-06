@@ -1,0 +1,478 @@
+Beginning Python - Best practices:
+==================================
+
+Swapping 2 values:
+------------------
+Non-Python:
+    tmp = a
+    a = b
+    b = tmp
+
+Python (uses tuple unpacking):
+    a, b = b, a
+
+
+
+Extracting values from a sequence (tuple or list):
+--------------------------------------------------
+Beginner:
+    a = lst[0]
+    b = lst[1]
+    c = lst[2]
+
+Better:
+    a, b, c = lst
+
+
+
+Looping over a sequence:
+----------------------
+Beginner:
+    for i in range(len(seq)):
+        # do something with seq[i]
+
+Better:
+    for item in seq:
+        # do something with item
+
+If you absolutely need the index:
+    for i, item in enumerate(seq):
+        # i is the index, item is seq[i]
+        # i goes from 0 to len(seq)-1
+
+If the index should start at 1:
+    for i, item in enumerate(seq, start=1):
+        # i goes from 1 to len(seq)
+
+
+Avoid conditionals like "x == True":
+--------------------------------
+
+Beginner:
+    if x == True:
+        # do something
+
+    if y == False:
+        # do something
+
+    if condition:
+        return True
+    else:
+        return False
+
+Better:
+    if x:
+        # do something
+
+    if not y:
+        # do something
+
+    return condition
+
+
+
+Test if a value is None using 'is', not '=='
+--------------------------------------------
+Use:
+    if somevalue is None:
+    if somevalue is not None:
+
+not:
+    if somevalue == None:
+    if somevalue != None:
+
+None is a singleton, so 'is' testing is 99.9% always the way to go (only exception might be if somevalue is an instance of a class with special __eq__ definition with how it compares to None, very rare)
+
+Also use 'is' testing for Enum values, which are singletons.
+
+
+Use list comprehensions or generator expressions instead of for/append:
+----------------------------------------------------------------
+Beginner:
+    outlist = []
+    for i in range(10):
+        outlist.append(chr(i+32))
+    print outlist
+
+Better:
+    outlist = [chr(i+32) for i in range(10)]
+
+
+
+But don't use list comprehensions as one-liner for loops:
+---------------------------------------------------------
+Too clever:
+    inputlist = list(range(-3, 3 + 1))
+    squares = set()
+    [squares.add(x * x) for x in inputlist]
+
+Better:
+    a = set()
+    for x in inputlist:
+        a.add(x)
+
+Best:
+    squares = {x * x for x in inputlist}
+
+
+
+Avoid building up strings using +=; use join():
+---------------------------------------------
+Beginner:
+    a = ''
+    for i in range(10):
+        a += chr(i+32)
+
+Better:
+    alist = []
+    for i in range(10):
+        alist.append(chr(i+32))
+    a = ''.join(alist)
+
+Even better (list comprehension):
+    a = ''.join([chr(i+32) for i in range(10)])
+
+Best! (generator expression):
+    a = ''.join(chr(i+32) for i in range(10))
+
+
+
+
+Use sets to build list of unique items:
+---------------------------------------
+Beginner:
+    a = "The quick brown fox jumps over the lazy dog."
+    uniq_chars = []
+    for c in a:
+        if c not in uniq_chars:
+            uniq_chars.append(c)
+
+Better:
+    a = "The quick brown fox jumps over the lazy dog."
+    uniq_chars = list(set(a))
+
+    # or if you must preserve order
+    seen = set()
+    uniq_chars = []
+    for c in a:
+        if c not in seen:
+            seen.add(c)
+            uniq_chars.append(c)
+
+
+
+Never update a list while iterating over it:
+--------------------------------------------
+Beginner:
+    seq = 'a list of words of varying length'.split()
+    for i,item in enumerate(seq):
+        if len(item) < 3:
+            del seq[i]  # <-- bug!
+
+Better:
+    # create a new list containing just what you want
+    # list comprehension is the perfect tool
+    seq = [word for word in seq if len(word) >= 3]
+
+Even better:
+    # use slice assignment to assign results back into
+    # original list
+    seq[:] = [word for word in seq if len(word) >= 3]
+
+
+
+Reading text from a file:
+-------------------------
+# okay
+f.readlines()
+
+# better
+list_of_lines = f.read().splitlines()
+
+# best
+for line in f:
+
+# bestest (with will auto-close file)
+with open('x.dat') as f:
+    for line in f:
+        ...do stuff with each line
+
+
+
+Use defaultdict to accumulate values or count:
+----------------------------------------------
+    from collections import defaultdict
+
+    words = 'This is a list of words that have different lengths'.split()
+    words = map(str.lower, words)
+
+    wordsbylendict = defaultdict(set)
+    letter_freq = defaultdict(int)
+    initial_letter_freq = defaultdict(int)
+
+    for word in words:
+        wordsbylendict[len(word)].add(word)
+        initial_letter_freq[word[0]] += 1
+        for c in word:
+            letter_freq[c] += 1
+
+    for k in sorted(wordsbylendict):
+        print k,list(wordsbylendict[k])
+    print
+
+    for k in sorted(letter_freq, key=lambda i:-letter_freq[i]):
+        print k, letter_freq[k]
+    print
+
+    for k in sorted(initial_letter_freq):
+        print k, initial_letter_freq[k]
+
+
+
+Closures are functions that return functions:
+---------------------------------------------
+def totalWithTax(taxPercent):
+    def fn(a)
+        return a*(1.0+taxPercent/100.0)
+
+# create function for tax in Travis county
+priceWithTax = totalWithTax(8.25)
+
+# compute total+tax for purchase of $100
+print priceWithTax(100)
+
+
+
+Use dicts to branch to different functions:
+-------------------------------------------
+priceWithTax = {}
+priceWithTax["TX"] = totalWithTax(8.25)
+priceWithTax["NH"] = totalWithTax(0.0)
+priceWithTax["NY"] = totalWithTax(6.5)
+priceWithTax["OH"] = totalWithTax(5.5)
+priceWithTax["CA"] = totalWithTax(8.25)
+
+price = 100
+for state in ("TX", "NH", "NY", "OH", "CA"):
+    print price, priceWithTax[state](price)
+
+
+
+import operator
+
+opns = {
+    '+' : operator.add,
+    '-' : operator.sub,
+    '*' : operator.mul,
+    '/' : operator.truediv,
+    '%' : operator.mod,
+    '^' : operator.xor,
+    }
+
+def eval_binary_expr(op1, operator, op2):
+    op1, op2 = int(op1), int(op2)
+    return opns[operator](op1, op2)
+
+print eval_binary_expr(*("1 + 3".split()))
+print eval_binary_expr(*("1 * 3".split()))
+print eval_binary_expr(*("1 % 3".split()))
+print eval_binary_expr(*("1 ^ 3".split()))
+
+
+Type annotation notes
+=====================
+
+Start by annotating method signatures
+-------------------------------------
+
+Pydantic or dataclasses for structures with named values
+--------------------------------------------------------
+
+dataclasses.dataclass(slots=True) guards against attribute typos
+----------------------------------------------------------------
+
+TypedDict vs NamedTuple
+-----------------------
+
+Type annotate container variables (lists, tuples, sets, dicts, etc.)
+--------------------------------------------------------------------
+
+
+
+O-O notes
+=========
+
+Test for types using 'isinstance', not type(object)
+---------------------------------------------------
+Use:
+    if isinstance(obj, TestType):
+not:
+    if type(obj) == TestType:
+    if type(obj) is TestType:  # 'is' testing is valid, since types are singletons
+
+'isinstance' also checks if obj's type is a subclass of TestType; explicit type checking does not.
+Extra tip: the second argument to `isinstance` can be a tuple of types
+
+    if isinstance(x, (int, float)):
+        print(f"{x} is a numeric value")
+
+
+Use classmethods for alternate constructors
+-------------------------------------------
+
+class Color:
+    # 8-bit color
+    COLOR_SPACE_SIZE = 256
+
+    def __init__(self, name: str, red: int, grn: int, blu: int):
+        self._red = red
+        self._grn = grn
+        self._blu = blu
+
+    @property
+    def as_long(self):
+        return (self.red * self.COLOR_SPACE_SIZE + self.grn) * self.COLOR_SPACE_SIZE + self.blu
+
+    @classmethod
+    def from_int(cls, int_value: int):
+        blu, rest = divmod(int_value, cls.COLOR_SPACE_SIZE)
+        grn, red = divmod(rest, cls.COLOR_SPACE_SIZE)
+        return cls(red, grn, blu)
+
+
+class HighResolutionColor(Color):
+    # 16-bit
+    COLOR_SPACE_SIZE = 65536
+
+
+
+Pythonic Practices (summary)
+----------------------------
+What is Pythonic?
+"for i in range(len(seq)):"? No.
+Use "for x in seq:".
+
+Use and design to the native data structures - tuple, list, dict, and set.
+Use iterators to loop over sequences.
+Use zip to iterate over multiple sequences together.
+Use short circuiting to skip unnecessary processing - 'all' and 'any' builtins do this.
+Design method interfaces to accept any suitable object, not just a narrow type (for instance, accept any iterable, not just lists).
+Use tuple unpacking to return multiple values from a method, or extract values from a tuple or list.
+Use negative indices - sequence[-1] instead of sequence[len(sequence)-1]
+Use list slicing to get subsequences.
+Use generator expressions to create iterables without actually constructing intermediate data structures.
+The most Pythonic builtins: any, all, zip, iter, hasattr, getattr, setattr
+The most Pythonic modules: collections, itertools, contextlib, functools, stringIO
+Use defaultdict's for dicts that accumulate values while iterating over a sequence of key-values
+Use deque's instead of lists for queues and stacks
+Use namedtuple's for classes that are just structs, IF attributes are to be immutable.
+Use partials to construct value-specific function objects that you can then dispatch to
+Assume sequences are passed as iterators (unidirectional, can only be consumed once).
+Use context managers to ensure files are closed, locks are released, etc. instead of try-finally
+Use closures to create run-time executable elements.
+Use decorators to add meta-behavior (property access, memoizing, lock synchronizing) to methods.
+Use dicts to dispatch to data items or functions, based on a selecting value as an index.
+Use else clause on a for loop to perform code after the loop *only* if the loop was not exited with break.
+Use exceptions, not returned status codes.
+Use else clause on a try/except to perform code after the try *only* if no exception was raised.
+Test for None-ness with 'if x is None:' (not 'if x == None')
+Test for boolean value with 'if x:' (never 'if x == True' or 'if x is True')
+Filtering elements out of a list by using a list comprehension to build a new filtered list; can assign to self with list[:] =
+Use * and ** operators to unpack a list or dict as function arguments
+
+
+Do minimal work when possible - to access the first or last element of a string split on whitespace, instead of:
+
+   s.split()[0]
+   s.split()[-1]
+
+do:
+
+   s.split(None,1)[0]
+   s.rsplit(None,1)[1]
+
+(These only split one time.)
+
+(If splitting on a specific string, use str.partition or str.rpartition. These _always_ return a 3-tuple, unlike split(), which can return list of varying length, depending on the string value, and the presence or absence of the splitting string.)
+
+
+To find the first matching element within a list write a generator to return all such values, and then call next() with it:
+
+    next(i for i in range(30,100) if i % 29)
+
+This is even better to do looping over two lists at once:
+
+    next((i,j) for i in range(7,10) for j in range(100,105) if j % i == 0)
+
+Can also pass a default value as a second argument to next() if no value is found. (Avoids writing nested for loops with breaks and break flags. Also does automatic short-circuiting.)
+
+
+
+Replace:
+
+    if key in dictvar:
+        del dictvar[key]
+
+with:
+
+    dictvar.pop(key, None)
+
+
+
+Context managers are for more than just files.  Threading.mutexes support the context manager interface, so instead of:
+
+    try:
+        lock.acquire()
+        # do synchronized stuff here
+    finally:
+        lock.release()
+
+Do:
+
+    with lock:
+        # do synchronized stuff here
+
+
+If you have specialized needs for your own context manager class, look into using the contextmanager decorator provided in Python's contextlib module. contextlib also provides the 'closing' context manager, which will automatically close an object at the end of a with block.
+
+
+
+
+Practices that are less Pythonic:
+---------------------------------
+for i in range(len(sequence)):
+  do something with sequence[i]
+
+Using exec or eval
+
+isinstance (or worse, if type(var) = ...)
+
+Using regular expressions when basic string functions (like split, join, startswith and endswith) will do the job.
+
+Filtering elements from a list by removing elements from the list while iterating over it, or over a copy.
+
+
+
+Practices/hacks that are no longer encouraged, or are deprecated:
+-----------------------------------------------------------------
+Simulating C's ternary operator x = cond ? a : b with
+    x = cond and a or b
+Use Python ternary syntax now:
+    x = a if cond else b
+
+"s.find(substring) >= 0" to test if substring is in s - instead do "substring in s"
+
+"dictvar.has_key(k)" has been deprecated in favor of "k in dictvar"
+
+
+
+Lots more good suggestions: https://david.goodger.org/projects/pycon/2007/idiomatic/handout.html
+(This is mostly still valid, though it was written to Python 2.7. Significant changes since then:
+- print is no longer a statement, but a built-in function
+     print a, b   becomes   print(a, b)
+- dict.keys() no longer returns a list of keys in the dict, but an iterable view of the keys
+  which updates as the dict updates
+- formatting strings using '%' string interpolation is now largely replaced by using f-strings
+- sorting using cmp is no longer supported; use key functions
+- optparse is superseded by argparse
+
